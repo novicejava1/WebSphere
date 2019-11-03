@@ -1,0 +1,126 @@
+==============================================================================================
+Docker images and repositories
+==============================================================================================
+
+Docker image is made up of filesystems layered over each other
+	bootfs
+	rootfs
+Once the container is booted it is moved into memory and boot fs is unmounted to free RAM for initrd.
+In Docker the root filesystem stays in read-only mode.
+Docker takes advantage of a union mount to add more read-only filesystems onto the root filesystem.
+Docker calls each of these filesystems images.
+Docker mounts a read-write filesystem on top of any layers below. This is where whatever processes we want our Docker container to run will execute.
+When a container is created, Docker builds from the stack of images and then adds the read-write layer on top.
+
+Docker images live in repositories. Respositories live inside registries
+Pulling specific version image from repo
+	$ sudo docker pull ubuntu:16.04
+Each tag marks together a series of image layers that represent a specific image.
+Types of Repositories
+	User repositories		eg novicejava1/ubuntu:16.04
+	top level repositories		eg ubuntu:16.04
+Docker images can be secured using signed docker images
+Searching image in repositories
+	$ sudo docker search puppet
+
+what is docker hub automated build process
+
+Building our own images
+	Using docker commit
+	Using docker build with Dockerfile
+
+Using docker commit
+$ sudo docker commit <containerid> novicejava1/apache2
+
+Using Dockerfile
+- Prepare the Dockerfile
+- Use docker build to build the image
+- Dockerfile uses DSL (Domain specific language)
+- Docker will upload the build context, as well as any files and directories contained in it, to our Docker daemon when the build is run.
+- Docker build can be done from a Dockerfile in github repository
+	$ docker build -t="novicejava1/apache2:v2" github.com/novicejava1/repo
+- Bypassing the Dockerfile build cache
+	$ docker build --no-cache -t="novicejava1/apache2:v2"
+- Templating the build cache step
+	ENV REFRESHED_AT 2019-11-03
+- Checking the image build history
+	$ docker history novicejava1/static_web
+- Running container in detached mode without mapping exposed port
+	$ docker run -d -p 80 --name "static_web" novicejava1/static_web nginx -g "daemon off;"
+	$ docker ps -a	[ this will show the random mapped port to 80 ]
+or
+	$ docker run -d -p 4000:80 --name "static_web" novicejava1/static_web nginx -g "daemon off;"
+
+Dockerfile instructions
+
+CMD - Run the command once the container is launched	(Always use array syntax)
+	CMD ["/bin/bash", "-l"]
+	docker run command will override the CMD command in Dockerfile if both are present
+	If multiple processes or commands needs to be run as part of starting a container you should use a service management tool like Supervisor
+
+ENTRYPOINT - any arguments we specify on the docker run command line will be passed as arguments to the command specified in the ENTRYPOINT
+	ENTRYPOINT ["/usr/sbin/nginx", "-g", "daemon off;"]
+
+WORKDIR - instruction provides a way to set the working directory for the container
+	- override the work directory from docker run 
+	$ docker run -it -w /var/log ubuntu pwd
+
+ENV - instruction is used to set environment variables during the image build process
+	ENV TARGET_DIR /opt/app
+	Passing env on the docker run command
+	$ docker run -it -e "WEB_PORT=8080" ubuntu env
+
+USER - instruction specifies a user that the image should be run as
+	USER user:group
+
+VOLUME - instruction adds volumes to any container created from the image
+	Volume is a specially designated directory within one or more containers that bypasses the Union File System to provide several useful features for persistent or
+shared data
+
+	Volumes persist until no containers use them
+	VOLUME ["/opt/project"]
+	VOLUME ["/opt/project", "/data" ]
+
+ADD - instruction adds files and directories from our build environment into our image
+	ADD software.lic /opt/application/software.lic
+	ADD http://wordpress.org/latest.zip /root/wordpress.zip
+	ADD latest.tar.gz /var/www/wordpress/				[ Automatically unpacks the tar file in destination location]
+	The source of the file can be a URL, filename, or directory as long as it is inside the build context or environment
+
+COPY - instruction is purely focused on copying local files from the build context and does not have any extraction or decompression capabilities
+	COPY conf.d/ /etc/apache2/
+	Any files and directories created by the copy will have a UID and GID of 0.
+
+LABEL - instruction adds metadata to a Docker image. The metadata is in the form of key/value pairs.
+	LABEL version="1.0"
+	LABEL location="New York" type="Data Center" role="Web Server"
+
+STOPSIGNAL - instruction sets the system call signal that will be sent to the container when you tell it to stop.
+
+ARG - instruction defines variables that can be passed at build-time via the docker build command
+	ARG build
+	ARG webapp_user=user
+	$ docker build --build-arg build=1234 -t jamtur01/webapp .
+
+SHELL - instruction allows the default shell used for the shell form of commands to be overridden
+
+HEALTHCHECK - instruction tells Docker how to test a container to check that it is still working correctly
+	HEALTHCHECK --interval=10s --timeout=1m --retries=5 CMD curl http ://localhost || exit 1
+	$ docker inspect --format '{{.State.Health.Status}}' static_web
+
+ONBUILD - instruction adds triggers to images. A trigger is executed when the image is used as the basis of another image
+
+Pushing an image to Docker Hub repository
+	$ docker push novicejava1/static_web
+
+Automated builds
+- Allows for building the Dockerfile in github repository to be build by DockerHub 
+
+Running own Docker registry
+	$ docker run -d -p 5000:5000 --name registry registry:2		[ Running container based registry ]
+Tagging image for our new registry
+	$ docker tag 22d47c8cb6e5 docker.example.com:5000/jamtur01/ static_web
+Pushing to new registry
+	$ docker push docker.example.com:5000/jamtur01/static_web
+
+The Quay service provides a private hosted registry that allows you to upload both public and private containers.
