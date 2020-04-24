@@ -124,3 +124,5 @@ Pushing to new registry
 	$ docker push docker.example.com:5000/jamtur01/static_web
 
 The Quay service provides a private hosted registry that allows you to upload both public and private containers.
+
+AdminConfig.create('J2EEResourceProperty', '(cells/feddeskCell01/nodes/feddeskNode01|resources.xml#J2EEResourcePropertySet_1587709011368)', '[[name "database string"] [type "java.lang.String"] [description ""] [value "EL;DR"] [required "false"]]')
